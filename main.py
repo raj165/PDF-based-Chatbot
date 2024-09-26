@@ -2,20 +2,18 @@ import streamlit as st
 import os
 from PyPDF2 import PdfReader
 from langchain.text_splitter import RecursiveCharacterTextSplitter
-from langchain.embeddings.openai import OpenAIEmbeddings
+from langchain_openai import AzureOpenAIEmbeddings
 from langchain_community.vectorstores import FAISS
 from langchain.chains.question_answering import load_qa_chain
-from langchain_community.chat_models import ChatOpenAI
+from langchain_openai.chat_models.azure import AzureChatOpenAI
 from dotenv import load_dotenv
 
-
-Api_key = os.getenv('OPENAI_API_KEY')
 load_dotenv()
 
 #Upload PDF files
 st.header("My Chatbot")
 
-with  st.sidebar:
+with st.sidebar:
     st.title("Your Documents")
     file = st.file_uploader(" Upload a PDf file and start asking questions", type="pdf")
 
@@ -39,7 +37,10 @@ if file is not None:
 
 
     # generating embedding
-    embeddings = OpenAIEmbeddings(openai_api_key=Api_key)
+    embeddings = AzureOpenAIEmbeddings(openai_api_key=os.environ["AZURE_OPENAI_API_KEY"],
+                                       azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+                                       model="text-embedding-ada-002",
+                                       api_version=os.environ["AZURE_OPENAI_API_VERSION"],)
 
     # creating vector store - FAISS
     vector_store = FAISS.from_texts(chunks, embeddings)
@@ -53,12 +54,9 @@ if file is not None:
         #st.write(match)
 
         #define the LLM
-        llm = ChatOpenAI(
-            openai_api_key = Api_key,
-            temperature = 0,
-            max_tokens = 1000,
-            model_name = "gpt-3.5-turbo"
-        )
+        llm = AzureChatOpenAI(azure_endpoint=os.environ["AZURE_OPENAI_ENDPOINT"],
+                              azure_deployment=os.environ["AZURE_OPENAI_DEPLOYMENT_NAME"],
+                              openai_api_version=os.environ["AZURE_OPENAI_API_VERSION"],)
 
         #output results
         #chain -> take the question, get relevant document, pass it to the LLM, generate the output
